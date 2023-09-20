@@ -17,7 +17,7 @@ func test() {
 	end := gonav.Vertex{X: 20.273, Y: 5.3, Z: 2.751}
 
 	// Find a path. If no path can be found, this will return an error
-	path, _ := nm.PathFind(gonav.Vertex(start), gonav.Vertex(end))
+	path, _ := nm.PathFind(start, end)
 
 	for _, ele := range path {
 		fmt.Println(ele)
