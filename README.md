@@ -3,6 +3,8 @@
 anyway use it like this
 
 ```go
+gonav "github.com/nurjeff/gogogadget_navmesh"
+
 func test() {
 	nml := gonav.NavMeshLoader{}
 	nml.LoadFromPath("../node_3d.tscn", nil)
@@ -24,7 +26,6 @@ func test() {
 	/* Prints:
 	----------
 	{-3.739 0.23989900000000003 0.308}
-	{-3.739 0.239899 0.308}
 	{-3.346343958333333 0.23989900000000003 0.5002916666666666}
 	{-2.9536879166666665 0.239899 0.6925833333333333}
 	{-2.561031875 0.239899 0.8848749999999999}
