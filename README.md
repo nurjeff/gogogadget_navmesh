@@ -51,4 +51,4 @@ Supports path smoothing and a form of string pulling so the agent does not stric
 
 Automatically searches for a NavMeshRegion in the Godot scene file loaded, so bake a sane NavMesh first.
 
-![](https://github.com/nurjeff/example.gif)
+![](https://raw.githubusercontent.com/nurjeff/gogogadget_navmesh/main/example.gif)
