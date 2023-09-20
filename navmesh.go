@@ -51,6 +51,12 @@ type NavMeshSettings struct {
 	// Might massively increase the runtime if set too high
 	// Default Value is .25
 	SmoothingStep float64
+	// Determine the 3D tolerance for wether or not a line intersects another one
+	// Default is 1e-9
+	LineIntersectsTolerance float64
+	// Max Angle the Agent can do when it's not strictly necessary, prevents zig-zagging
+	// Default is 150
+	MaxAngleRadius float64
 }
 
 func (navMesh *NavMesh) PathFind(start Vertex, end Vertex) ([]Vertex, error) {
@@ -94,6 +100,8 @@ func (settings *NavMeshSettings) setDefaults() {
 	settings.SmoothingRadius = 4
 	settings.SmoothingIterations = 2
 	settings.SmoothingStep = 0.25
+	settings.LineIntersectsTolerance = 1e-9
+	settings.MaxAngleRadius = 150.0
 }
 
 func removeDuplicateVertices(navMesh NavMesh) NavMesh {
@@ -143,7 +151,7 @@ func (navMesh *NavMesh) findNearestVertex(vertex Vertex, endPoint Vertex) Vertex
 			(dirToEnd.length() * dirToVertex.length())
 
 		// Prefer vertices that are closer and more directly in the path to the end
-		if distance < minDistance && cosAngle > navMesh.Settings.DestinationHoming { // You can tune this threshold as needed
+		if distance < minDistance && cosAngle > navMesh.Settings.DestinationHoming {
 			minDistance = distance
 			nearestVertex = v
 		}
@@ -278,7 +286,6 @@ func (navMesh *NavMesh) getYValueFromMesh(x, z float64) float64 {
 		}
 	}
 
-	// If no triangle contains the point, return a default value (you might want to return an error or a special value here)
 	return 0.0
 }
 
@@ -295,7 +302,7 @@ func (navMesh *NavMesh) isValidPoint(vertex Vertex) bool {
 		// If the point is in the triangle, find the y value based on the barycentric coordinates
 		if 0 <= a && a <= 1 && 0 <= b && b <= 1 && 0 <= c && c <= 1 {
 			yMesh := a*v0.Y + b*v1.Y + c*v2.Y
-			if math.Abs(vertex.Y-yMesh) < navMesh.Settings.ValidPointTolerance { // You may need to adjust this tolerance
+			if math.Abs(vertex.Y-yMesh) < navMesh.Settings.ValidPointTolerance {
 				return true
 			}
 		}
@@ -475,7 +482,7 @@ func (navMesh *NavMesh) optimizePath(path []Vertex) []Vertex {
 
 		// Snap the averaged point to the navMesh
 		averagedPoint := Vertex{avgX, avgY, avgZ}
-		snappedPoint := navMesh.snapToNavMesh(averagedPoint) // assume snapToNavMesh is your function to snap points to the navMesh
+		snappedPoint := navMesh.snapToNavMesh(averagedPoint)
 		optimizedPath[i] = snappedPoint
 	}
 
@@ -495,13 +502,11 @@ func (navMesh NavMesh) canSkipWaypoint(start, end Vertex) bool {
 			edgeStart := navMesh.Vertices[triangle[i]]
 			edgeEnd := navMesh.Vertices[triangle[(i+1)%3]]
 
-			if lineIntersectsEdge(start, end, edgeStart, edgeEnd) {
+			if navMesh.lineIntersectsEdge(start, end, edgeStart, edgeEnd) {
 				if !navMesh.isEdgeShared(edgeStart, edgeEnd) {
 					return false
 				}
 			}
-
-			// New Check: Verify if the line follows the terrain
 			if !navMesh.doesLineFollowTerrain(start, end) {
 				return false
 			}
@@ -524,7 +529,7 @@ func (navMesh *NavMesh) straightenPath(path []Vertex) []Vertex {
 		dir1.Y = 0
 		dir2.Y = 0
 
-		if math.Abs(dir1.angleWith(dir2)) > 150 { // You might want to tweak this angle
+		if math.Abs(dir1.angleWith(dir2)) > navMesh.Settings.MaxAngleRadius {
 			// Attempt to replace the zigzag with a straight line, but only if it follows the terrain
 			if navMesh.doesLineFollowTerrain(path[i], path[i+2]) {
 				straightenedPath = append(straightenedPath, path[i+2])

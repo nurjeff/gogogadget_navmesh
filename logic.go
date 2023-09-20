@@ -165,7 +165,7 @@ func lineIntersectionPoint(a, b, c, d Vertex) *Vertex {
 	return nil
 }
 
-func lineIntersectsEdge(a, b, edge1, edge2 Vertex) bool {
+func (navMesh *NavMesh) lineIntersectsEdge(a, b, edge1, edge2 Vertex) bool {
 	dir1 := b.subtract(a)
 	dir2 := edge2.subtract(edge1)
 
@@ -185,8 +185,7 @@ func lineIntersectsEdge(a, b, edge1, edge2 Vertex) bool {
 		y1 := a.Y + alpha*(b.Y-a.Y)
 		y2 := edge1.Y + beta*(edge2.Y-edge1.Y)
 
-		const tolerance = 1e-9 // You might want to adjust this value based on the precision you need
-		return math.Abs(y1-y2) < tolerance
+		return math.Abs(y1-y2) < navMesh.Settings.LineIntersectsTolerance
 	}
 
 	return false //(alpha > 0 && alpha < 1) && (beta > 0 && beta < 1)
