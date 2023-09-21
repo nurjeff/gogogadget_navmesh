@@ -1,41 +1,93 @@
 package gogogadget_navmesh
 
-import "math"
+import (
+	"math"
+)
 
-func isPointInTriangle(v0, v1, v2, point Vertex) bool {
-	// Calculate the normal of the plane
-	edge1 := Vertex{v1.X - v0.X, v1.Y - v0.Y, v1.Z - v0.Z}
-	edge2 := Vertex{v2.X - v0.X, v2.Y - v0.Y, v2.Z - v0.Z}
-	normal := crossProduct(edge1, edge2)
+func computeAngle(A, P, C Vertex) float64 {
+	v1 := A.subtract(P).normalize()
+	v2 := C.subtract(P).normalize()
+	dotProduct := v1.dot(v2)
+	return math.Acos(dotProduct) * (180.0 / math.Pi)
+}
 
-	// Find the distance from the point to the plane
-	toPoint := Vertex{point.X - v0.X, point.Y - v0.Y, point.Z - v0.Z}
-	distToPlane := dotProduct(normal, toPoint) / math.Sqrt(dotProduct(normal, normal))
+func rayTriangleIntersection(origin, direction, v0, v1, v2 Vertex) (*Vertex, float64) {
+	// Implementation of the Moller–Trumbore intersection algorithm
 
-	// If the point is in the plane, check if it is in the triangle using barycentric coordinates
-	if math.Abs(distToPlane) < 1e-1 {
-		dot00 := dotProduct(edge1, edge1)
-		dot01 := dotProduct(edge1, edge2)
-		dot02 := dotProduct(edge1, toPoint)
-		dot11 := dotProduct(edge2, edge2)
-		dot12 := dotProduct(edge2, toPoint)
+	e1 := v1.subtract(v0)
+	e2 := v2.subtract(v0)
+	h := direction.cross(e2)
+	a := e1.dot(h)
 
-		invDenom := 1.0 / (dot00*dot11 - dot01*dot01)
-		u := (dot11*dot02 - dot01*dot12) * invDenom
-		v := (dot00*dot12 - dot01*dot02) * invDenom
-
-		return (u >= 0) && (v >= 0) && (u+v < 1)
+	if a > -math.SmallestNonzeroFloat64 && a < math.SmallestNonzeroFloat64 {
+		return nil, 0
 	}
 
+	f := 1.0 / a
+	s := origin.subtract(v0)
+	u := f * s.dot(h)
+
+	if u < 0.0 || u > 1.0 {
+		return nil, 0
+	}
+
+	q := s.cross(e1)
+	v := f * direction.dot(q)
+
+	if v < 0.0 || u+v > 1.0 {
+		return nil, 0
+	}
+
+	t := f * e2.dot(q)
+
+	if t > math.SmallestNonzeroFloat64 {
+		return &Vertex{
+			X: origin.X + direction.X*t,
+			Y: origin.Y + direction.Y*t,
+			Z: origin.Z + direction.Z*t,
+		}, t
+	}
+
+	return nil, 0
+}
+
+// Calculate the normal of a triangle defined by three vertices
+func calculateNormal(v1, v2, v3 Vertex) Vertex {
+	edge1 := v2.subtract(v1)
+	edge2 := v3.subtract(v1)
+	return edge1.cross(edge2).normalize()
+}
+
+func vertexInVertices(vertex Vertex, vertices []Vertex) bool {
+	for _, v := range vertices {
+		if v.equals(vertex) {
+			return true
+		}
+	}
 	return false
 }
 
-func crossProduct(v1, v2 Vertex) Vertex {
+// Helper function to compute the cross product of two vectors.
+func crossProduct(u, v Vertex) Vertex {
 	return Vertex{
-		X: v1.Y*v2.Z - v1.Z*v2.Y,
-		Y: v1.Z*v2.X - v1.X*v2.Z,
-		Z: v1.X*v2.Y - v1.Y*v2.X,
+		X: u.Y*v.Z - u.Z*v.Y,
+		Y: u.Z*v.X - u.X*v.Z,
+		Z: u.X*v.Y - u.Y*v.X,
 	}
+}
+
+// Helper function to subtract two vectors.
+func subtractVectors2(u, v Vertex) Vertex {
+	return Vertex{
+		X: u.X - v.X,
+		Y: u.Y - v.Y,
+		Z: u.Z - v.Z,
+	}
+}
+
+// Helper function to compute the length of a vector.
+func vectorLength(v Vertex) float64 {
+	return math.Sqrt(v.X*v.X + v.Y*v.Y + v.Z*v.Z)
 }
 
 func dotProduct(v1, v2 Vertex) float64 {
@@ -54,23 +106,10 @@ func calculateHeuristic(start, current, destination Vertex) float64 {
 	return distToCurrent + estDistToDestination
 }
 
-func appendStartAndEnd(rawPath []Vertex, exactStart, exactEnd Vertex) []Vertex {
+func getFinalPath(rawPath []Vertex, exactStart, exactEnd Vertex) []Vertex {
 	fp := append([]Vertex{}, exactStart)
 	fp = append(fp, rawPath...)
 	return append(fp, exactEnd)
-}
-
-func int32SliceToIntSlice(int32Slice [][3]int32) [][]int {
-	intSlice := make([][]int, len(int32Slice))
-
-	for i, int32Array := range int32Slice {
-		intSlice[i] = make([]int, len(int32Array))
-		for j, value := range int32Array {
-			intSlice[i][j] = int(value)
-		}
-	}
-
-	return intSlice
 }
 
 func closestPointOnSegment(a, b, p Vertex) Vertex {
@@ -83,7 +122,7 @@ func closestPointOnSegment(a, b, p Vertex) Vertex {
 
 func closestPointInTriangle(v0, v1, v2, p Vertex) (Vertex, bool) {
 	// Compute the normal of the triangle
-	normal := cross(v1.subtract(v0), v2.subtract(v0))
+	normal := cross(subtract(v1, v0), subtract(v2, v0))
 
 	// Find the closest point in the plane of the triangle
 	d := -dot(normal, v0)
@@ -103,22 +142,10 @@ func closestPointInTriangle(v0, v1, v2, p Vertex) (Vertex, bool) {
 	return Vertex{}, false
 }
 
-func dot(a, b Vertex) float64 {
-	return a.X*b.X + a.Y*b.Y + a.Z*b.Z
-}
-
-func cross(a, b Vertex) Vertex {
-	return Vertex{
-		a.Y*b.Z - a.Z*b.Y,
-		a.Z*b.X - a.X*b.Z,
-		a.X*b.Y - a.Y*b.X,
-	}
-}
-
 func barycentric(v0, v1, v2, p Vertex) (float64, float64, float64) {
-	v0v2 := v2.subtract(v0)
-	v0v1 := v1.subtract(v0)
-	v0p := p.subtract(v0)
+	v0v2 := subtract(v2, v0)
+	v0v1 := subtract(v1, v0)
+	v0p := subtract(p, v0)
 	d00 := dot(v0v2, v0v2)
 	d01 := dot(v0v2, v0v1)
 	d11 := dot(v0v1, v0v1)
@@ -129,64 +156,4 @@ func barycentric(v0, v1, v2, p Vertex) (float64, float64, float64) {
 	w := (d00*d21 - d01*d20) / denom
 	u := 1.0 - v - w
 	return u, v, w
-}
-
-func lineIntersectionPoint(a, b, c, d Vertex) *Vertex {
-	// Calculate the differences in X and Z coordinates for the line segments
-	dx1 := b.X - a.X
-	dz1 := b.Z - a.Z
-	dx2 := d.X - c.X
-	dz2 := d.Z - c.Z
-
-	// Calculate the determinants
-	det := dx1*dz2 - dx2*dz1
-
-	// If the determinants are zero, the lines are parallel and have no intersection point
-	if det == 0 {
-		return nil
-	}
-
-	// Calculate the parameters for the potential intersection point
-	ua := ((c.X-a.X)*dz2 - (c.Z-a.Z)*dx2) / det
-	ub := ((c.X-a.X)*dz1 - (c.Z-a.Z)*dx1) / det
-
-	// Check if the potential intersection point lies on both line segments
-	// If it does, calculate the intersection point's coordinates and return them
-	if ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1 {
-		intersectionPoint := Vertex{
-			X: a.X + ua*dx1,
-			Y: a.Y + ua*(b.Y-a.Y), // Calculate the Y coordinate using the same parameter for the intersection point
-			Z: a.Z + ua*dz1,
-		}
-		return &intersectionPoint
-	}
-
-	// If the potential intersection point doesn't lie on both line segments, return nil
-	return nil
-}
-
-func (navMesh *NavMesh) lineIntersectsEdge(a, b, edge1, edge2 Vertex) bool {
-	dir1 := b.subtract(a)
-	dir2 := edge2.subtract(edge1)
-
-	denom := dir2.X*dir1.Z - dir2.Z*dir1.X
-	alphaNum := dir2.X*(edge1.Z-a.Z) - dir2.Z*(edge1.X-a.X)
-	betaNum := dir1.X*(edge1.Z-a.Z) - dir1.Z*(edge1.X-a.X)
-
-	if denom == 0 {
-		return false // Lines are parallel
-	}
-
-	alpha := alphaNum / denom
-	beta := betaNum / denom
-
-	if (alpha > 0 && alpha < 1) && (beta > 0 && beta < 1) {
-		// Now check if the Y coordinates also match at the intersection point
-		y1 := a.Y + alpha*(b.Y-a.Y)
-		y2 := edge1.Y + beta*(edge2.Y-edge1.Y)
-
-		return math.Abs(y1-y2) < navMesh.Settings.LineIntersectsTolerance
-	}
-
-	return false //(alpha > 0 && alpha < 1) && (beta > 0 && beta < 1)
 }

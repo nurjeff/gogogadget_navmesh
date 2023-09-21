@@ -51,7 +51,7 @@ func (nml *NavMeshLoader) loadAndParse(path string) (NavMesh, error) {
 	navMeshRegex := regexp.MustCompile(`\[sub_resource type="NavigationMesh" id="NavigationMesh_unj38"\]\n(\s*)vertices = PackedVector3Array\(([\s\S]*?)\)\n(\s*)polygons = \[([\s\S]*?)\]`)
 	match := navMeshRegex.FindStringSubmatch(sceneData)
 	if len(match) != 5 {
-		return NavMesh{}, errors.New("NavigationMesh sub-resource not found.")
+		return NavMesh{}, errors.New("navigationMesh sub-resource not found")
 	}
 
 	// Parse vertices
