@@ -12,17 +12,13 @@ import (
 )
 
 type NavMeshLoader struct {
-	id          int
-	initialized bool
-	navMeshes   sync.Map
+	id        int
+	navMeshes sync.Map
 }
 
 // Loads a NavMesh from a Path. This should point to a Godot Scene file
 // If no settings for the NavMesh are passed, default values are used.
 func (nml *NavMeshLoader) LoadFromPath(path string, settings *NavMeshSettings) error {
-	if !nml.initialized {
-		return errors.New("load a navmesh first")
-	}
 	nm, err := nml.loadAndParse(path)
 	if err != nil {
 		return err
@@ -52,9 +48,6 @@ func (nml *NavMeshLoader) LoadFromPath(path string, settings *NavMeshSettings) e
 // Loads a NavMesh from a Path with a name. This should point to a Godot Scene file
 // If no settings for the NavMesh are passed, default values are used.
 func (nml *NavMeshLoader) LoadFromPathName(path string, settings *NavMeshSettings, name string) error {
-	if !nml.initialized {
-		return errors.New("load a navmesh first")
-	}
 	nm, err := nml.loadAndParse(path)
 	if err != nil {
 		return err
@@ -125,10 +118,6 @@ func (nml *NavMeshLoader) GetById(id int) (*NavMesh, error) {
 }
 
 func (nml *NavMeshLoader) loadAndParse(path string) (NavMesh, error) {
-	if !nml.initialized {
-		nml.navMeshes = sync.Map{}
-		nml.initialized = true
-	}
 	file, err := os.Open(path)
 	if err != nil {
 		return NavMesh{}, err
