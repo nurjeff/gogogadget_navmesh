@@ -8,10 +8,12 @@ import (
 )
 
 type NavMesh struct {
+	ID            int
 	Vertices      []Vertex
 	Triangles     [][3]int
 	IsInitialized bool
 	FileName      string
+	ShortName     string
 	Settings      NavMeshSettings
 }
 

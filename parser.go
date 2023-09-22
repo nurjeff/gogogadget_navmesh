@@ -7,35 +7,106 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type NavMeshLoader struct {
-	NavMeshes []NavMesh
+	id          int
+	initialized bool
+	navMeshes   sync.Map
 }
 
 // Loads a NavMesh from a Path. This should point to a Godot Scene file
 // If no settings for the NavMesh are passed, default values are used.
 func (nml *NavMeshLoader) LoadFromPath(path string, settings *NavMeshSettings) error {
+	if !nml.initialized {
+		return errors.New("load a navmesh first")
+	}
 	nm, err := nml.loadAndParse(path)
 	if err != nil {
 		return err
 	}
 
-	for _, ele := range nml.NavMeshes {
-		if ele.FileName == nm.FileName {
-			return errors.New("navmesh with filename " + ele.FileName + " already exists")
+	var findErr error = nil
+	nml.navMeshes.Range(func(key any, value any) bool {
+		n := value.(NavMesh)
+		if n.FileName == nm.FileName {
+			findErr = errors.New("navmesh with filename " + nm.FileName + " already exists")
+			return false
 		}
+		return true
+	})
+	if findErr != nil {
+		return findErr
 	}
 
 	if err := nm.initialize(settings); err != nil {
 		return err
 	}
 
-	nml.NavMeshes = append(nml.NavMeshes, nm)
+	nml.navMeshes.Store(nm.FileName, nm)
 	return nil
 }
 
+// Loads a NavMesh from a Path with a name. This should point to a Godot Scene file
+// If no settings for the NavMesh are passed, default values are used.
+func (nml *NavMeshLoader) LoadFromPathName(path string, settings *NavMeshSettings, name string) error {
+	if !nml.initialized {
+		return errors.New("load a navmesh first")
+	}
+	nm, err := nml.loadAndParse(path)
+	if err != nil {
+		return err
+	}
+
+	var findErr error = nil
+	nml.navMeshes.Range(func(key any, value any) bool {
+		n := value.(NavMesh)
+		if n.FileName == nm.FileName {
+			findErr = errors.New("navmesh with filename " + nm.FileName + " already exists")
+			return false
+		}
+		return true
+	})
+	if findErr != nil {
+		return findErr
+	}
+
+	if err := nm.initialize(settings); err != nil {
+		return err
+	}
+
+	nm.ShortName = name
+	nml.navMeshes.Store(nm.ShortName, nm)
+	return nil
+}
+
+func (nml *NavMeshLoader) GetByName(name string) (*NavMesh, error) {
+	if len(name) == 0 {
+		return nil, errors.New("name can't be empty")
+	}
+
+	var nm *NavMesh
+	nml.navMeshes.Range(func(key any, value any) bool {
+		n := value.(NavMesh)
+		if n.ShortName == name {
+			nm = &n
+			return false
+		}
+		return true
+	})
+
+	if nm == nil {
+		return nil, errors.New("navmesh " + name + " not found")
+	}
+	return nm, nil
+}
+
 func (nml *NavMeshLoader) loadAndParse(path string) (NavMesh, error) {
+	if !nml.initialized {
+		nml.navMeshes = sync.Map{}
+		nml.initialized = true
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		return NavMesh{}, err
@@ -82,5 +153,6 @@ func (nml *NavMeshLoader) loadAndParse(path string) (NavMesh, error) {
 		triangles = append(triangles, triangle)
 	}
 
-	return NavMesh{Vertices: vertices, Triangles: triangles, FileName: path, IsInitialized: false}, nil
+	nml.id++
+	return NavMesh{Vertices: vertices, Triangles: triangles, FileName: path, IsInitialized: false, ID: nml.id}, nil
 }
