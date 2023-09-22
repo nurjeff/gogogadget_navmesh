@@ -106,10 +106,10 @@ func calculateHeuristic(start, current, destination Vertex) float64 {
 	return distToCurrent + estDistToDestination
 }
 
-func getFinalPath(rawPath []Vertex, exactStart, exactEnd Vertex) []Vertex {
-	fp := append([]Vertex{}, exactStart)
+func (navMesh *NavMesh) getFinalPath(rawPath []Vertex, exactStart, exactEnd Vertex) []Vertex {
+	fp := append([]Vertex{}, navMesh.snapToNavMesh(exactStart))
 	fp = append(fp, rawPath...)
-	return append(fp, exactEnd)
+	return append(fp, navMesh.snapToNavMesh(exactEnd))
 }
 
 func closestPointOnSegment(a, b, p Vertex) Vertex {

@@ -321,7 +321,11 @@ func (navMesh *NavMesh) smoothPath(originalPath []Vertex) []Vertex {
 func (navMesh *NavMesh) PathFind(start Vertex, end Vertex) ([]Vertex, error) {
 	path := []Vertex{}
 
-	modifiedStart := navMesh.snapToNavMesh(start)
+	// Todo: change this so the start and end points do not snap to vertices
+	modifiedStart, err := navMesh.findNearestVertexTowardDestination(start, end)
+	if err != nil {
+		return path, err
+	}
 	modifiedEnd, err := navMesh.findNearestVertexTowardDestination(end, end)
 	if err != nil {
 		return path, err
@@ -332,15 +336,18 @@ func (navMesh *NavMesh) PathFind(start Vertex, end Vertex) ([]Vertex, error) {
 		return path, err
 	}
 
-	path[len(path)-1] = navMesh.snapToNavMesh(modifiedEnd)
-	path = getFinalPath(path, start, end)
+	if len(path) <= 0 {
+		return path, errors.New("invalid path found")
+	}
+
+	path = navMesh.getFinalPath(path, start, end)
 	path = navMesh.optimizePath(path)
 	path = navMesh.smoothPath(path)
 	for index, e := range path {
 		path[index] = navMesh.snapToNavMesh(e)
 		path[index].Y = navMesh.getYValueFromMesh(e.X, e.Z)
 	}
-	finishedPath := []Vertex{}
+	finishedPath := []Vertex{navMesh.snapToNavMesh(start)}
 	for i := 1; i < len(path); i++ {
 		if path[i].X != path[i-1].X || path[i].Y != path[i-1].Y || path[i].Z != path[i-1].Z {
 			finishedPath = append(finishedPath, path[i])
