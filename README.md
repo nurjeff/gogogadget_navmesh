@@ -1,4 +1,4 @@
-## The definitely extremely inefficient but on the other hand also kind of inaccurate NavMesh-based 3D pathfinding Go package that loads Godot Scenes your mother probably warned you about
+## The definitely extremely inefficient but on the other hand also kind of inaccurate NavMesh-based 3D server-side pathfinding Go package that loads Godot Scenes your mother probably warned you about
 
 anyway use it like this
 
