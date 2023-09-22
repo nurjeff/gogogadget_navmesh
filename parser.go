@@ -2,6 +2,7 @@ package gogogadget_navmesh
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -98,6 +99,27 @@ func (nml *NavMeshLoader) GetByName(name string) (*NavMesh, error) {
 
 	if nm == nil {
 		return nil, errors.New("navmesh " + name + " not found")
+	}
+	return nm, nil
+}
+
+func (nml *NavMeshLoader) GetById(id int) (*NavMesh, error) {
+	if id <= 0 {
+		return nil, errors.New("id can't be <= 0")
+	}
+
+	var nm *NavMesh
+	nml.navMeshes.Range(func(key any, value any) bool {
+		n := value.(NavMesh)
+		if n.ID == id {
+			nm = &n
+			return false
+		}
+		return true
+	})
+
+	if nm == nil {
+		return nil, errors.New("navmesh " + fmt.Sprint(id) + " not found")
 	}
 	return nm, nil
 }
