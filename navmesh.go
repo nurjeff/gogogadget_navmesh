@@ -101,6 +101,7 @@ type NavMeshSettings struct {
 
 func (navMesh NavMesh) findNearestVertexTowardDestination(start Vertex, destination Vertex) (Vertex, error) {
 	// Step 1: Check if the destination is within the navmesh
+	destination = navMesh.snapToNavMesh(destination)
 	if !navMesh.isPointInNavMesh(destination) {
 		return Vertex{}, fmt.Errorf("destination point is not reachable")
 	}
@@ -320,15 +321,55 @@ func (navMesh *NavMesh) smoothPath(originalPath []Vertex) []Vertex {
 	return smoothedPath
 }
 
+func (navMesh *NavMesh) findBestNavMeshVertex(start Vertex, end Vertex) (Vertex, error) {
+	start = navMesh.snapToNavMesh(start)
+	var bestVertex Vertex
+	minCost := math.MaxFloat64
+	found := false
+
+	// Loop through each vertex in the NavMesh
+	for _, vertex := range navMesh.Vertices {
+		// Check if the line segment between start and vertex is inside the NavMesh
+		if navMesh.segmentInsideNavMesh(start, vertex) {
+			distanceToStart := distanceBetweenVertices(start, vertex)
+			distanceToEnd := distanceBetweenVertices(vertex, end)
+
+			// The cost is a combination of the distance from the start point to the vertex
+			// and the estimated distance from the vertex to the end point
+			cost := distanceToStart + distanceToEnd
+			if cost < minCost {
+				minCost = cost
+				bestVertex = vertex
+				found = true
+			}
+		}
+	}
+
+	if !found {
+		return Vertex{}, errors.New("no suitable vertex found within NavMesh constraints")
+	}
+
+	return bestVertex, nil
+}
+
+func distanceBetweenVertices(v1 Vertex, v2 Vertex) float64 {
+	dx := v1.X - v2.X
+	dy := v1.Y - v2.Y
+	dz := v1.Z - v2.Z
+	return math.Sqrt(dx*dx + dy*dy + dz*dz)
+}
+
 func (navMesh *NavMesh) PathFind(start Vertex, end Vertex) ([]Vertex, error) {
 	path := []Vertex{}
 
-	// Todo: change this so the start and end points do not snap to vertices
-	modifiedStart, err := navMesh.findNearestVertexTowardDestination(start, end)
+	modifiedEnd, err := navMesh.findNearestVertexTowardDestination(end, end)
 	if err != nil {
 		return path, err
 	}
-	modifiedEnd, err := navMesh.findNearestVertexTowardDestination(end, end)
+
+	// Todo: change this so the start and end points do not snap to vertices
+	modifiedStart, err := navMesh.findBestNavMeshVertex(start, modifiedEnd)
+	fmt.Println(modifiedStart)
 	if err != nil {
 		return path, err
 	}
