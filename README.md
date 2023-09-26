@@ -6,24 +6,17 @@ anyway use it like this
 gonav "github.com/nurjeff/gogogadget_navmesh"
 
 func test() {
-	nml := gonav.NavMeshLoader{}
-	nml.LoadFromPath("../node_3d.tscn", nil)
+	navMeshLoader := gnav.NavMeshLoader{}
+	navMeshLoader.LoadFromPathName("../node_3d.tscn", nil, "Level 1")
 
-	// We're just loading a single NavMesh
-	nm := nml.NavMeshes[0]
+	navMesh, _ := navMeshLoader.GetByName("Level 1")
 
-	// Set Start- and Endpoint
-	start := gonav.Vertex{X: -3.739, Y: 0.0, Z: 0.308}
-	end := gonav.Vertex{X: 20.273, Y: 5.3, Z: 2.751}
+	start := gnav.Vertex{-3.739, 0.0, 0.308}
+	end := gnav.Vertex{20.273, 5.3, 2.751}
 
-	// Find a path. If no path can be found, this will return an error
-	path, _ := nm.PathFind(start, end)
+	path, _ := navMesh.PathFind(start, end)
 
-	for _, ele := range path {
-		fmt.Println(ele)
-	}
-
-	/* Prints:
+	/* Printing 'path':
 	----------
 	{-3.739 0.23989900000000003 0.308}
 	{-3.346343958333333 0.23989900000000003 0.5002916666666666}
